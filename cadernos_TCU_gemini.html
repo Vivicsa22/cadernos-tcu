@@ -705,17 +705,19 @@ Retorne APENAS JSON sem markdown, sem espaços extras:
 
     const promptContent = `Analise este PDF da Aula ${lessonNum} de ${subject}.
 
-Extraia o conteúdo COMPLETO das questões de número ${nums} (numeração sequencial após deduplicação de duplicatas).
+Extraia o conteúdo COMPLETO das questões de número ${nums}.
+A numeração é sequencial após remover duplicatas — questão 1 é a primeira questão única, questão 2 é a segunda, etc.
 
-Retorne APENAS JSON puro sem markdown:
-{"questoes":[{"num":1,"enunciado":"texto completo","alternativas":["A. texto","B. texto"],"comentario":"comentário completo"}]}
+Retorne APENAS JSON puro sem markdown, sem texto antes ou depois:
+{"questoes":[{"num":1,"enunciado":"texto completo da questão","alternativas":[],"comentario":"comentário completo"},{"num":2,"enunciado":"texto","alternativas":[],"comentario":"comentário"}]}
 
-REGRAS:
-- "enunciado": texto completo da questão
-- "alternativas": array com as opções (vazio [] se for Certo/Errado)
-- "comentario": comentário/explicação completa
-- Substitua aspas duplas dentro dos textos por aspas simples
-- NÃO use quebras de linha dentro dos valores`;
+REGRAS CRÍTICAS:
+- Retorne exatamente os números solicitados: ${nums}
+- "enunciado": texto completo da questão, sem truncar
+- "alternativas": array vazio [] para Certo/Errado, ou ["A. texto","B. texto"...] para múltipla escolha  
+- "comentario": comentário/gabarito completo
+- Substitua aspas duplas DENTRO dos textos por aspas simples
+- Não use quebras de linha \\n dentro dos valores de string`;
 
     const partsContent = [
       { inline_data: { mime_type: 'application/pdf', data: b64 } },
@@ -723,11 +725,17 @@ REGRAS:
     ];
 
     try {
-      const rawContent = await callGemini(apiKey, partsContent, 8000);
+      const rawContent = await callGemini(apiKey, partsContent, 16000);
+      log(`  Bloco ${b+1} — resposta: ${rawContent.length} chars`, '');
       const contentData = safeParseJSON(rawContent);
+      log(`  Bloco ${b+1} — questões no JSON: ${contentData.questoes?.length || 0}`, '');
 
       for (const qIdx of block) {
-        const content = contentData.questoes?.find(c => c.num === qIdx.num);
+        // Try matching by num, fallback to position in block
+        const content = contentData.questoes?.find(c => 
+          (c.num === qIdx.num) || (c.num === String(qIdx.num))
+        ) || contentData.questoes?.[block.indexOf(qIdx)];
+
         questoesCompletas.push({
           num: qIdx.num,
           grupo: qIdx.grupo,
@@ -739,8 +747,9 @@ REGRAS:
           comentario: content?.comentario || 'Comentário não disponível.'
         });
       }
+      log(`  Bloco ${b+1} — ${block.length} questões processadas`, 'ok');
     } catch(err) {
-      log(`  Bloco ${b+1} falhou: ${err.message} — usando dados do índice`, 'warn');
+      log(`  Bloco ${b+1} falhou: ${err.message}`, 'err');
       for (const qIdx of block) {
         questoesCompletas.push({
           num: qIdx.num,
