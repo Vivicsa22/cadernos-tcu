@@ -598,41 +598,57 @@ async function extractQuestions(apiKey, file, lessonNum, subject) {
   log(`Processando Aula ${lessonNum}: ${file.name}...`, 'warn');
   const b64 = await fileToBase64(file);
 
-  // ── PHASE A: Get index of all unique questions ──────────────────────────────
-  const promptIndex = `Analise este PDF da Aula ${lessonNum} de ${subject} para concurso do TCU.
+  // ── PHASE A1: Get themes only ───────────────────────────────────────────────
+  const promptTemas = `Analise este PDF da Aula ${lessonNum} de ${subject}.
+Liste os 5-8 principais temas abordados.
+Retorne APENAS JSON sem markdown: {"temas":["tema1","tema2"]}`;
 
-TAREFA: Faça duas coisas:
-
-1. Liste os 5-10 temas principais abordados na aula
-2. Conte e liste TODAS as questões ÚNICAS (sem duplicatas)
-
-REGRA DE DEDUPLICAÇÃO: as mesmas questões aparecem duas vezes no PDF — primeiro sem resposta, depois com comentário. Conte apenas UMA vez cada questão, sempre a versão com comentário/gabarito.
-
-Retorne APENAS este JSON puro, sem markdown, sem texto extra:
-{"temas":["tema1","tema2"],"total":35,"questoes":[{"n":1,"g":"Certo","b":"CESPE","t":"ce"},{"n":2,"g":"Errado","b":"CESPE","t":"ce"},{"n":3,"g":"B","b":"FCC","t":"me"}]}
-
-Campos:
-- "n": número sequencial (1, 2, 3...)
-- "g": gabarito (Certo/Errado ou letra A/B/C/D/E)
-- "b": banca abreviada (CESPE, FCC, VUNESP, PROF)
-- "t": tipo — "ce" para Certo/Errado, "me" para múltipla escolha
-- "total": total de questões únicas
-
-IMPORTANTE: seja conciso. Use abreviações. Não inclua enunciados ou comentários aqui.`;
-
-  const partsIndex = [
+  const partsTemas = [
     { inline_data: { mime_type: 'application/pdf', data: b64 } },
-    { text: promptIndex }
+    { text: promptTemas }
+  ];
+
+  let temas = [];
+  try {
+    const rawTemas = await callGemini(apiKey, partsTemas, 1000);
+    const temasData = safeParseJSON(rawTemas);
+    temas = temasData.temas || [];
+    log(`Aula ${lessonNum}: ${temas.length} temas identificados`, 'ok');
+  } catch(_) {
+    log(`Aula ${lessonNum}: não foi possível extrair temas`, 'warn');
+  }
+
+  await delay(7000);
+
+  // ── PHASE A2: Get question index only ───────────────────────────────────────
+  const promptQuestoes = `Analise este PDF da Aula ${lessonNum} de ${subject}.
+
+TAREFA: Liste APENAS os dados básicos de cada questão ÚNICA (sem duplicatas).
+
+As questões aparecem duas vezes no PDF: sem resposta no meio do texto, e com comentário no final. Conte cada questão apenas UMA vez.
+
+Retorne APENAS JSON sem markdown, sem espaços extras:
+{"q":[{"n":1,"g":"Certo","b":"CESPE","t":"ce"},{"n":2,"g":"Errado","b":"CESPE","t":"ce"},{"n":3,"g":"B","b":"FCC","t":"me"}]}
+
+- n: número sequencial (1,2,3...)
+- g: gabarito (Certo/Errado ou A/B/C/D/E)  
+- b: banca (CESPE/FCC/VUNESP/PROF)
+- t: ce=Certo-Errado, me=múltipla escolha`;
+
+  const partsQuestoes = [
+    { inline_data: { mime_type: 'application/pdf', data: b64 } },
+    { text: promptQuestoes }
   ];
 
   let indexData;
   let rawIndex = '';
   try {
-    rawIndex = await callGemini(apiKey, partsIndex, 16000);
-    log(`Aula ${lessonNum} — resposta tamanho: ${rawIndex.length} chars`, '');
-    log(`Aula ${lessonNum} — início: ${rawIndex.slice(0,200).replace(/\n/g,' ')}`, '');
+    rawIndex = await callGemini(apiKey, partsQuestoes, 16000);
+    log(`Aula ${lessonNum} — índice tamanho: ${rawIndex.length} chars`, '');
     indexData = safeParseJSON(rawIndex);
-    log(`Aula ${lessonNum}: índice com ${indexData.questoes?.length || 0} questões únicas`, 'ok');
+    // Support both {"questoes":[...]} and {"q":[...]}
+    if (!indexData.questoes && indexData.q) indexData.questoes = indexData.q;
+    log(`Aula ${lessonNum}: ${indexData.questoes?.length || 0} questões únicas no índice`, 'ok');
   } catch(err) {
     log(`Aula ${lessonNum} — erro: ${err.message}`, 'err');
     log(`Aula ${lessonNum} — resposta raw: ${rawIndex.slice(0,500).replace(/\n/g,' ')}`, 'err');
@@ -644,7 +660,7 @@ IMPORTANTE: seja conciso. Use abreviações. Não inclua enunciados ou comentár
     return { aula: lessonNum, total: 0, temas: indexData.temas || [], questoes: [] };
   }
 
-  // Normalize index fields (support both short and long field names)
+  // Normalize index fields
   const allQuestoes = indexData.questoes.map((q, i) => ({
     num: q.num || q.n || (i + 1),
     grupo: ['A','B','C','D'][i % 4],
@@ -730,7 +746,7 @@ REGRAS:
   const result = {
     aula: lessonNum,
     total: questoesCompletas.length,
-    temas: indexData.temas || [],
+    temas: temas,
     questoes: questoesCompletas.sort((a, b) => a.num - b.num)
   };
 
