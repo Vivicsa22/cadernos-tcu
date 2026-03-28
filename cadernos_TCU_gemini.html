@@ -590,68 +590,141 @@ function safeParseJSON(raw) {
   throw new Error('Não foi possível interpretar o JSON retornado pelo Gemini.');
 }
 
-// ─── Extract questions from one PDF ──────────────────────────────────────────
+// ─── Extract questions from one PDF (two-phase approach) ─────────────────────
 async function extractQuestions(apiKey, file, lessonNum, subject) {
   log(`Processando Aula ${lessonNum}: ${file.name}...`, 'warn');
   const b64 = await fileToBase64(file);
 
-  const prompt = `Você é um assistente de estudos para concurso do TCU. Analise este PDF da Aula ${lessonNum} de ${subject}.
+  // ── PHASE A: Get index of all unique questions ──────────────────────────────
+  const promptIndex = `Analise este PDF da Aula ${lessonNum} de ${subject} para concurso do TCU.
 
-TAREFA: Extraia TODAS as questões, deduplique e retorne JSON válido e completo.
+TAREFA: Liste TODAS as questões ÚNICAS do PDF.
 
-REGRAS IMPORTANTES:
-1. Questões aparecem ao longo do texto, em blocos de comentários e em listas de exercícios finais
-2. Se a mesma questão aparecer mais de uma vez, mantenha APENAS a versão com comentário mais completo. Descarte duplicatas silenciosamente.
-3. Após deduplicação, numere sequencialmente de 1 em diante
-4. Atribua grupos pela posição sequencial:
-   - Grupo A: posições 1,5,9,13,17,21,25,29...
-   - Grupo B: posições 2,6,10,14,18,22,26,30...
-   - Grupo C: posições 3,7,11,15,19,23,27,31...
-   - Grupo D: posições 4,8,12,16,20,24,28,32...
-5. Identifique os 5-10 principais temas abordados na aula
+REGRA DE DEDUPLICAÇÃO (CRÍTICA):
+- As mesmas questões aparecem mais de uma vez no PDF: primeiro sem resposta (no meio do texto), depois com comentário e gabarito (no final)
+- Você deve identificar questões com o mesmo enunciado ou conteúdo equivalente e manter APENAS UMA versão
+- Sempre prefira a versão que possui comentário/gabarito
+- O índice final NÃO deve ter nenhuma questão repetida
 
-REGRAS DE FORMATAÇÃO DO JSON (CRÍTICO):
-- Retorne APENAS JSON puro, sem markdown, sem texto antes ou depois
-- Todos os textos dentro do JSON devem ter aspas e caracteres especiais escapados corretamente
-- Substitua aspas duplas dentro de textos por aspas simples
-- Mantenha os comentários curtos (máximo 3 linhas) para evitar truncamento
-- NÃO use quebras de linha dentro dos valores de string — use \\n se necessário
+Retorne APENAS JSON puro sem markdown:
+{"temas":["tema1","tema2"],"questoes":[{"num":1,"banca":"CESPE","tipo":"certo_errado","gabarito":"Certo"},{"num":2,"banca":"CESPE","tipo":"certo_errado","gabarito":"Errado"}]}
 
-ESTRUTURA OBRIGATÓRIA:
-{"aula":${lessonNum},"total":0,"temas":["tema1","tema2"],"questoes":[{"num":1,"grupo":"A","banca":"CESPE","tipo":"certo_errado","enunciado":"texto","alternativas":[],"gabarito":"Certo","comentario":"explicação resumida"}]}`;
+- "num": número sequencial após deduplicação, começando em 1
+- "banca": banca examinadora ou "Elaboração própria"
+- "tipo": "certo_errado" ou "multipla_escolha"
+- "gabarito": resposta correta
+- "temas": 5 a 10 temas principais da aula`;
 
-  const parts = [
+  const partsIndex = [
     { inline_data: { mime_type: 'application/pdf', data: b64 } },
-    { text: prompt }
+    { text: promptIndex }
   ];
 
-  let data;
-  let lastError;
-
-  // Try up to 2 times
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const raw = await callGemini(apiKey, parts, 16000);
-      data = safeParseJSON(raw);
-      break;
-    } catch(err) {
-      lastError = err;
-      log(`Aula ${lessonNum} — tentativa ${attempt} falhou: ${err.message}`, 'warn');
-      if (attempt < 2) await delay(5000);
-    }
+  let indexData;
+  try {
+    const rawIndex = await callGemini(apiKey, partsIndex, 8000);
+    indexData = safeParseJSON(rawIndex);
+    log(`Aula ${lessonNum}: índice com ${indexData.questoes?.length || 0} questões únicas`, 'ok');
+  } catch(err) {
+    throw new Error(`Falha ao obter índice da Aula ${lessonNum}: ${err.message}`);
   }
 
-  if (!data) throw new Error(lastError?.message || 'Falha ao processar JSON');
+  if (!indexData.questoes?.length) {
+    log(`Aula ${lessonNum}: nenhuma questão encontrada no índice`, 'warn');
+    return { aula: lessonNum, total: 0, temas: indexData.temas || [], questoes: [] };
+  }
 
-  // Ensure aula number is correct
-  data.aula = lessonNum;
-  if (!data.questoes) data.questoes = [];
-  if (!data.temas) data.temas = [];
-  data.total = data.questoes.length;
+  // Assign groups based on sequential position
+  const BLOCK_SIZE = 8;
+  const allQuestoes = indexData.questoes.map((q, i) => ({
+    ...q,
+    num: i + 1,
+    grupo: ['A','B','C','D'][i % 4]
+  }));
 
-  log(`Aula ${lessonNum}: ${data.total} questões únicas extraídas`, 'ok');
-  log(`  A:[${data.questoes.filter(q=>q.grupo==='A').map(q=>q.num).join(',')||'—'}] B:[${data.questoes.filter(q=>q.grupo==='B').map(q=>q.num).join(',')||'—'}] C:[${data.questoes.filter(q=>q.grupo==='C').map(q=>q.num).join(',')||'—'}] D:[${data.questoes.filter(q=>q.grupo==='D').map(q=>q.num).join(',')||'—'}]`);
-  return data;
+  log(`  Grupos — A:[${allQuestoes.filter(q=>q.grupo==='A').map(q=>q.num).join(',')}] B:[${allQuestoes.filter(q=>q.grupo==='B').map(q=>q.num).join(',')}] C:[${allQuestoes.filter(q=>q.grupo==='C').map(q=>q.num).join(',')}] D:[${allQuestoes.filter(q=>q.grupo==='D').map(q=>q.num).join(',')}]`);
+
+  // ── PHASE B: Extract content in blocks of BLOCK_SIZE ───────────────────────
+  await delay(7000); // rate limit between calls
+
+  const blocks = [];
+  for (let i = 0; i < allQuestoes.length; i += BLOCK_SIZE) {
+    blocks.push(allQuestoes.slice(i, i + BLOCK_SIZE));
+  }
+
+  const questoesCompletas = [];
+
+  for (let b = 0; b < blocks.length; b++) {
+    if (stopFlag) break;
+    const block = blocks[b];
+    const nums = block.map(q => q.num).join(', ');
+    log(`  Aula ${lessonNum} — extraindo questões ${nums}...`, '');
+
+    const promptContent = `Analise este PDF da Aula ${lessonNum} de ${subject}.
+
+Extraia o conteúdo COMPLETO das questões de número ${nums} (numeração sequencial após deduplicação de duplicatas).
+
+Retorne APENAS JSON puro sem markdown:
+{"questoes":[{"num":1,"enunciado":"texto completo","alternativas":["A. texto","B. texto"],"comentario":"comentário completo"}]}
+
+REGRAS:
+- "enunciado": texto completo da questão
+- "alternativas": array com as opções (vazio [] se for Certo/Errado)
+- "comentario": comentário/explicação completa
+- Substitua aspas duplas dentro dos textos por aspas simples
+- NÃO use quebras de linha dentro dos valores`;
+
+    const partsContent = [
+      { inline_data: { mime_type: 'application/pdf', data: b64 } },
+      { text: promptContent }
+    ];
+
+    try {
+      const rawContent = await callGemini(apiKey, partsContent, 8000);
+      const contentData = safeParseJSON(rawContent);
+
+      for (const qIdx of block) {
+        const content = contentData.questoes?.find(c => c.num === qIdx.num);
+        questoesCompletas.push({
+          num: qIdx.num,
+          grupo: qIdx.grupo,
+          banca: qIdx.banca,
+          tipo: qIdx.tipo,
+          gabarito: qIdx.gabarito,
+          enunciado: content?.enunciado || 'Enunciado não extraído.',
+          alternativas: content?.alternativas || [],
+          comentario: content?.comentario || 'Comentário não disponível.'
+        });
+      }
+    } catch(err) {
+      log(`  Bloco ${b+1} falhou: ${err.message} — usando dados do índice`, 'warn');
+      for (const qIdx of block) {
+        questoesCompletas.push({
+          num: qIdx.num,
+          grupo: qIdx.grupo,
+          banca: qIdx.banca,
+          tipo: qIdx.tipo,
+          gabarito: qIdx.gabarito,
+          enunciado: 'Conteúdo não extraído nesta execução.',
+          alternativas: [],
+          comentario: 'Comentário não disponível.'
+        });
+      }
+    }
+
+    // Rate limit: wait between blocks (except last)
+    if (b < blocks.length - 1) await delay(7000);
+  }
+
+  const result = {
+    aula: lessonNum,
+    total: questoesCompletas.length,
+    temas: indexData.temas || [],
+    questoes: questoesCompletas.sort((a, b) => a.num - b.num)
+  };
+
+  log(`Aula ${lessonNum}: ${result.total} questões extraídas com conteúdo completo`, 'ok');
+  return result;
 }
 
 // ─── Generate booklet HTML ────────────────────────────────────────────────────
@@ -704,10 +777,23 @@ h2{font-size:15px;font-weight:600;color:#333;border-left:4px solid #c8a96e;paddi
   <div class="questao-header"><strong>Questão ${q.num}</strong> &nbsp;·&nbsp; ${q.banca || 'Fonte não identificada'} &nbsp;·&nbsp; ${tipo}</div>
   <div class="enunciado">${q.enunciado || ''}</div>`;
 
-      if (q.alternativas?.length) {
+      if (q.tipo === 'certo_errado') {
+        html += `<ul class="alternativas">
+    <li>( ) &nbsp;Certo</li>
+    <li>( ) &nbsp;Errado</li>
+  </ul>`;
+      } else if (q.alternativas?.length) {
         html += `<ul class="alternativas">`;
         q.alternativas.forEach(alt => { html += `<li>( ) &nbsp;${alt}</li>`; });
         html += `</ul>`;
+      } else {
+        html += `<ul class="alternativas">
+    <li>( ) &nbsp;A.</li>
+    <li>( ) &nbsp;B.</li>
+    <li>( ) &nbsp;C.</li>
+    <li>( ) &nbsp;D.</li>
+    <li>( ) &nbsp;E.</li>
+  </ul>`;
       }
 
       html += `<div class="comentario">
