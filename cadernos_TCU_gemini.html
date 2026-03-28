@@ -598,22 +598,24 @@ async function extractQuestions(apiKey, file, lessonNum, subject) {
   // ── PHASE A: Get index of all unique questions ──────────────────────────────
   const promptIndex = `Analise este PDF da Aula ${lessonNum} de ${subject} para concurso do TCU.
 
-TAREFA: Liste TODAS as questões ÚNICAS do PDF.
+TAREFA: Faça duas coisas:
 
-REGRA DE DEDUPLICAÇÃO (CRÍTICA):
-- As mesmas questões aparecem mais de uma vez no PDF: primeiro sem resposta (no meio do texto), depois com comentário e gabarito (no final)
-- Você deve identificar questões com o mesmo enunciado ou conteúdo equivalente e manter APENAS UMA versão
-- Sempre prefira a versão que possui comentário/gabarito
-- O índice final NÃO deve ter nenhuma questão repetida
+1. Liste os 5-10 temas principais abordados na aula
+2. Conte e liste TODAS as questões ÚNICAS (sem duplicatas)
 
-Retorne APENAS JSON puro sem markdown:
-{"temas":["tema1","tema2"],"questoes":[{"num":1,"banca":"CESPE","tipo":"certo_errado","gabarito":"Certo"},{"num":2,"banca":"CESPE","tipo":"certo_errado","gabarito":"Errado"}]}
+REGRA DE DEDUPLICAÇÃO: as mesmas questões aparecem duas vezes no PDF — primeiro sem resposta, depois com comentário. Conte apenas UMA vez cada questão, sempre a versão com comentário/gabarito.
 
-- "num": número sequencial após deduplicação, começando em 1
-- "banca": banca examinadora ou "Elaboração própria"
-- "tipo": "certo_errado" ou "multipla_escolha"
-- "gabarito": resposta correta
-- "temas": 5 a 10 temas principais da aula`;
+Retorne APENAS este JSON puro, sem markdown, sem texto extra:
+{"temas":["tema1","tema2"],"total":35,"questoes":[{"n":1,"g":"Certo","b":"CESPE","t":"ce"},{"n":2,"g":"Errado","b":"CESPE","t":"ce"},{"n":3,"g":"B","b":"FCC","t":"me"}]}
+
+Campos:
+- "n": número sequencial (1, 2, 3...)
+- "g": gabarito (Certo/Errado ou letra A/B/C/D/E)
+- "b": banca abreviada (CESPE, FCC, VUNESP, PROF)
+- "t": tipo — "ce" para Certo/Errado, "me" para múltipla escolha
+- "total": total de questões únicas
+
+IMPORTANTE: seja conciso. Use abreviações. Não inclua enunciados ou comentários aqui.`;
 
   const partsIndex = [
     { inline_data: { mime_type: 'application/pdf', data: b64 } },
@@ -639,12 +641,13 @@ Retorne APENAS JSON puro sem markdown:
     return { aula: lessonNum, total: 0, temas: indexData.temas || [], questoes: [] };
   }
 
-  // Assign groups based on sequential position
-  const BLOCK_SIZE = 8;
+  // Normalize index fields (support both short and long field names)
   const allQuestoes = indexData.questoes.map((q, i) => ({
-    ...q,
-    num: i + 1,
-    grupo: ['A','B','C','D'][i % 4]
+    num: q.num || q.n || (i + 1),
+    grupo: ['A','B','C','D'][i % 4],
+    banca: q.banca || q.b || 'Não identificada',
+    tipo: (q.tipo || q.t || 'ce') === 'me' ? 'multipla_escolha' : 'certo_errado',
+    gabarito: q.gabarito || q.g || '—'
   }));
 
   log(`  Grupos — A:[${allQuestoes.filter(q=>q.grupo==='A').map(q=>q.num).join(',')}] B:[${allQuestoes.filter(q=>q.grupo==='B').map(q=>q.num).join(',')}] C:[${allQuestoes.filter(q=>q.grupo==='C').map(q=>q.num).join(',')}] D:[${allQuestoes.filter(q=>q.grupo==='D').map(q=>q.num).join(',')}]`);
