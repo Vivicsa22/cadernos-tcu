@@ -621,12 +621,16 @@ Retorne APENAS JSON puro sem markdown:
   ];
 
   let indexData;
+  let rawIndex = '';
   try {
-    const rawIndex = await callGemini(apiKey, partsIndex, 8000);
-    log(`Aula ${lessonNum} — resposta bruta (primeiros 300 chars): ${rawIndex.slice(0,300)}`, '');
+    rawIndex = await callGemini(apiKey, partsIndex, 8000);
+    log(`Aula ${lessonNum} — resposta tamanho: ${rawIndex.length} chars`, '');
+    log(`Aula ${lessonNum} — início: ${rawIndex.slice(0,200).replace(/\n/g,' ')}`, '');
     indexData = safeParseJSON(rawIndex);
     log(`Aula ${lessonNum}: índice com ${indexData.questoes?.length || 0} questões únicas`, 'ok');
   } catch(err) {
+    log(`Aula ${lessonNum} — erro: ${err.message}`, 'err');
+    log(`Aula ${lessonNum} — resposta raw: ${rawIndex.slice(0,500).replace(/\n/g,' ')}`, 'err');
     throw new Error(`Falha ao obter índice da Aula ${lessonNum}: ${err.message}`);
   }
 
