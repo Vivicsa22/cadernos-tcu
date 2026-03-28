@@ -623,6 +623,7 @@ Retorne APENAS JSON puro sem markdown:
   let indexData;
   try {
     const rawIndex = await callGemini(apiKey, partsIndex, 8000);
+    log(`Aula ${lessonNum} — resposta bruta (primeiros 300 chars): ${rawIndex.slice(0,300)}`, '');
     indexData = safeParseJSON(rawIndex);
     log(`Aula ${lessonNum}: índice com ${indexData.questoes?.length || 0} questões únicas`, 'ok');
   } catch(err) {
