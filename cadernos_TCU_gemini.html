@@ -545,46 +545,49 @@ async function callGemini(apiKey, parts, maxRetries = 3) {
 
 // ─── Safe JSON cleaner ────────────────────────────────────────────────────────
 function safeParseJSON(raw) {
-  // Remove markdown code fences
-  let s = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+  let s = raw.trim()
+    .replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/,'').trim();
 
-  // Find outermost { }
   const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('Nenhum JSON encontrado na resposta.');
-  s = s.slice(start, end + 1);
+  if (start === -1) throw new Error('Nenhum JSON encontrado na resposta.');
+  s = s.slice(start);
 
-  // Try direct parse first
-  try { return JSON.parse(s); } catch(_) {}
-
-  // Fix common issues: unescaped quotes inside strings, trailing commas
-  // Remove trailing commas before } or ]
+  // Fix trailing commas
   s = s.replace(/,\s*([}\]])/g, '$1');
 
-  // Try again
+  // Try direct parse (full JSON)
   try { return JSON.parse(s); } catch(_) {}
 
-  // Last resort: extract questoes array manually if JSON is truncated
+  // JSON is truncated — try to recover temas and questoes with regex
   const temas = [];
-  const temasMatch = s.match(/"temas"\s*:\s*\[(.*?)\]/s);
+  const temasMatch = s.match(/"temas"\s*:\s*\[([\s\S]*?)\]/);
   if (temasMatch) {
     try {
-      JSON.parse('[' + temasMatch[1] + ']').forEach(t => temas.push(t));
+      const arr = JSON.parse('[' + temasMatch[1].replace(/,\s*$/, '') + ']');
+      arr.forEach(t => temas.push(t));
     } catch(_) {}
   }
 
+  // Extract individual question objects with flexible field matching
   const questoes = [];
-  const questaoRegex = /\{[^{}]*"num"\s*:\s*(\d+)[^{}]*"grupo"\s*:\s*"([ABCD])"[^{}]*\}/gs;
+  // Match objects like {"num":1,...} or {"n":1,...} even if truncated at end
+  const objRegex = /\{[^{}]*?"(?:num|n)"\s*:\s*(\d+)[^{}]*?\}/gs;
   let m;
-  while ((m = questaoRegex.exec(s)) !== null) {
+  while ((m = objRegex.exec(s)) !== null) {
     try {
-      const q = JSON.parse(m[0].replace(/,\s*([}\]])/g, '$1'));
-      questoes.push(q);
+      let obj = m[0].replace(/,\s*$/, '').replace(/,\s*([}\]])/g, '$1');
+      const q = JSON.parse(obj);
+      questoes.push({
+        num: q.num || q.n,
+        banca: q.banca || q.b || 'Não identificada',
+        tipo: (q.tipo || q.t || 'ce') === 'me' ? 'multipla_escolha' : 'certo_errado',
+        gabarito: q.gabarito || q.g || '—'
+      });
     } catch(_) {}
   }
 
   if (questoes.length > 0) {
-    return { aula: 0, total: questoes.length, temas, questoes };
+    return { temas, questoes, total: questoes.length };
   }
 
   throw new Error('Não foi possível interpretar o JSON retornado pelo Gemini.');
@@ -625,7 +628,7 @@ IMPORTANTE: seja conciso. Use abreviações. Não inclua enunciados ou comentár
   let indexData;
   let rawIndex = '';
   try {
-    rawIndex = await callGemini(apiKey, partsIndex, 8000);
+    rawIndex = await callGemini(apiKey, partsIndex, 16000);
     log(`Aula ${lessonNum} — resposta tamanho: ${rawIndex.length} chars`, '');
     log(`Aula ${lessonNum} — início: ${rawIndex.slice(0,200).replace(/\n/g,' ')}`, '');
     indexData = safeParseJSON(rawIndex);
