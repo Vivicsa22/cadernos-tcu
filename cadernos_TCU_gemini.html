@@ -661,6 +661,7 @@ Retorne APENAS JSON sem markdown, sem espaços extras:
   }
 
   // Normalize index fields
+  const BLOCK_SIZE = 8;
   const allQuestoes = indexData.questoes.map((q, i) => ({
     num: q.num || q.n || (i + 1),
     grupo: ['A','B','C','D'][i % 4],
