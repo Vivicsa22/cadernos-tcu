@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadernos TCU — Revisão Espaçada</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1916;
+    --surface2: #242220;
+    --border: #2e2c29;
+    --accent: #c8a96e;
+    --accent2: #8fb89a;
+    --text: #e8e4dc;
+    --text2: #9a9590;
+    --text3: #5a5752;
+    --danger: #c46a5a;
+    --success: #8fb89a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 48px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  header span { color: var(--text3); font-size: 13px; font-weight: 300; }
+
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 20px;
+  }
+
+  .api-row { display: flex; gap: 10px; align-items: center; }
+
+  input[type="password"], input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus { border-color: var(--accent); }
+
+  .btn {
+    background: var(--accent);
+    color: #0f0e0c;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 18px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; font-weight: 500; }
+
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: rgba(200,169,110,0.04);
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+  .drop-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .drop-sub { font-size: 13px; color: var(--text3); }
+
+  .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .file-num {
+    background: var(--accent);
+    color: #0f0e0c;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .file-name { flex: 1; font-size: 13px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-size { font-size: 11px; color: var(--text3); }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    transition: color 0.2s;
+  }
+  .file-remove:hover { color: var(--danger); }
+
+  .action-row { display: flex; gap: 12px; align-items: center; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0f0e0c;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 13px 28px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .progress-wrap { display: none; flex-direction: column; gap: 14px; }
+  .progress-wrap.active { display: flex; }
+
+  .progress-bar-bg { background: var(--surface2); border-radius: 100px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { background: var(--accent); height: 100%; border-radius: 100px; transition: width 0.4s ease; width: 0%; }
+  .progress-status { font-size: 13px; color: var(--text2); }
+  .progress-step { font-size: 12px; color: var(--text3); }
+
+  .log-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 220px;
+    overflow-y: auto;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--text3);
+    display: none;
+  }
+  .log-box.active { display: block; }
+  .log-line { margin-bottom: 4px; }
+  .log-line.ok { color: var(--success); }
+  .log-line.warn { color: var(--accent); }
+  .log-line.err { color: var(--danger); }
+
+  .results-grid { display: flex; flex-direction: column; gap: 10px; }
+
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    transition: border-color 0.2s;
+  }
+  .result-item:hover { border-color: var(--accent2); }
+
+  .result-badge {
+    background: var(--accent2);
+    color: #0f0e0c;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  .result-name { flex: 1; font-size: 13px; color: var(--text); }
+  .result-meta { font-size: 11px; color: var(--text3); }
+
+  .btn-download {
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-download:hover { background: var(--accent2); color: #0f0e0c; }
+
+  .btn-download-all {
+    background: var(--accent2);
+    color: #0f0e0c;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 11px 22px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-download-all:hover { opacity: 0.85; }
+
+  .tip {
+    background: rgba(200,169,110,0.06);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+  .tip strong { color: var(--accent); font-weight: 500; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cadernos TCU</h1>
+  <span>Revisão Espaçada · Gemini API · Gratuito</span>
+</header>
+
+<main>
+
+  <!-- Step 1: API Key -->
+  <div class="card">
+    <div class="card-title">① Chave de API do Gemini (gratuita)</div>
+    <div class="api-row">
+      <input type="password" id="apiKey" placeholder="AIza...">
+      <button class="btn" onclick="toggleKey()">Mostrar</button>
+    </div>
+    <div style="margin-top:10px;">
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size:12px; color:var(--accent); text-decoration:none;">
+        → Gerar sua chave gratuita em aistudio.google.com (sem cartão)
+      </a>
+    </div>
+  </div>
+
+  <!-- Step 2: Config -->
+  <div class="card">
+    <div class="card-title">② Configuração da Matéria</div>
+    <div class="config-grid">
+      <div>
+        <div class="field-label">Nome da matéria</div>
+        <input type="text" id="subject" placeholder="Ex: Controle Externo / TCU">
+      </div>
+      <div>
+        <div class="field-label">Número total de aulas</div>
+        <input type="text" id="totalLessons" placeholder="Ex: 10">
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: PDFs -->
+  <div class="card">
+    <div class="card-title">③ PDFs das Aulas</div>
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" multiple accept=".pdf" onchange="handleFiles(this.files)">
+      <span class="drop-icon">📂</span>
+      <div class="drop-title">Arraste os PDFs aqui ou clique para selecionar</div>
+      <div class="drop-sub">Os arquivos serão ordenados automaticamente por nome</div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <div style="margin-top:14px; display:flex; gap:10px;" id="fileActions" class="hidden">
+      <button class="btn-ghost" onclick="clearFiles()">Limpar tudo</button>
+      <span style="font-size:12px; color:var(--text3); align-self:center;" id="fileCount"></span>
+    </div>
+  </div>
+
+  <!-- Step 4: Generate -->
+  <div class="card">
+    <div class="card-title">④ Gerar Cadernos</div>
+
+    <div class="tip" style="margin-bottom:20px;">
+      <strong>Como funciona:</strong> Cada PDF é processado individualmente pelo Gemini 2.5 Flash. As questões são extraídas, deduplicadas e distribuídas nos Grupos A/B/C/D. Os cadernos consolidados são gerados seguindo sua tabela de revisão espaçada. O limite gratuito é de 10 requisições/minuto — a ferramenta respeita esse limite automaticamente.
+    </div>
+
+    <div class="action-row">
+      <button class="btn-primary" id="btnGenerate" onclick="startGeneration()">Gerar todos os cadernos</button>
+      <button class="btn-ghost hidden" id="btnStop" onclick="stopGeneration()">Parar</button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap" style="margin-top:24px;">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-status" id="progressStatus">Iniciando...</div>
+      <div class="progress-step" id="progressStep"></div>
+    </div>
+
+    <div class="log-box" id="logBox" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="card hidden" id="resultsCard">
+    <div class="card-title">✓ Cadernos Gerados</div>
+    <div class="results-grid" id="resultsGrid"></div>
+    <hr class="divider" style="margin:20px 0;">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <button class="btn-download-all" onclick="downloadAll()">⬇ Baixar todos os cadernos</button>
+      <button class="btn-ghost" onclick="downloadPerplexity()">⬇ Lista de temas (Perplexity)</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let files = [];
+let cadernos = {};
+let perplexityText = '';
+let stopFlag = false;
+
+// ─── Spaced repetition table ──────────────────────────────────────────────────
+const SPACED_TABLE = {
+  1:  [{aula:1,grupo:'A'}],
+  2:  [{aula:1,grupo:'B'},{aula:2,grupo:'A'}],
+  3:  [{aula:1,grupo:'C'},{aula:3,grupo:'A'}],
+  4:  [{aula:1,grupo:'D'},{aula:4,grupo:'A'}],
+  5:  [{aula:2,grupo:'B'},{aula:5,grupo:'A'}],
+  6:  [{aula:2,grupo:'C'},{aula:3,grupo:'B'},{aula:6,grupo:'A'}],
+  7:  [{aula:2,grupo:'D'},{aula:3,grupo:'C'},{aula:4,grupo:'B'},{aula:7,grupo:'A'}],
+  8:  [{aula:3,grupo:'D'},{aula:4,grupo:'C'},{aula:5,grupo:'B'},{aula:8,grupo:'A'}],
+  9:  [{aula:4,grupo:'D'},{aula:5,grupo:'C'},{aula:6,grupo:'B'},{aula:9,grupo:'A'}],
+  10: [{aula:5,grupo:'D'},{aula:6,grupo:'C'},{aula:7,grupo:'B'},{aula:10,grupo:'A'}],
+  11: [{aula:6,grupo:'D'},{aula:7,grupo:'C'},{aula:8,grupo:'B'},{aula:11,grupo:'A'}],
+  12: [{aula:7,grupo:'D'},{aula:8,grupo:'C'},{aula:9,grupo:'B'},{aula:12,grupo:'A'}],
+  13: [{aula:8,grupo:'D'},{aula:9,grupo:'C'},{aula:10,grupo:'B'},{aula:13,grupo:'A'}],
+  14: [{aula:9,grupo:'D'},{aula:10,grupo:'C'},{aula:11,grupo:'B'},{aula:14,grupo:'A'}],
+  15: [{aula:10,grupo:'D'},{aula:11,grupo:'C'},{aula:12,grupo:'B'},{aula:15,grupo:'A'}],
+  16: [{aula:11,grupo:'D'},{aula:12,grupo:'C'},{aula:13,grupo:'B'},{aula:16,grupo:'A'}],
+  17: [{aula:12,grupo:'D'},{aula:13,grupo:'C'},{aula:14,grupo:'B'},{aula:17,grupo:'A'}],
+  18: [{aula:13,grupo:'D'},{aula:14,grupo:'C'},{aula:15,grupo:'B'},{aula:18,grupo:'A'}],
+  19: [{aula:14,grupo:'D'},{aula:15,grupo:'C'},{aula:16,grupo:'B'},{aula:19,grupo:'A'}],
+  20: [{aula:15,grupo:'D'},{aula:16,grupo:'C'},{aula:17,grupo:'B'},{aula:20,grupo:'A'}],
+  21: [{aula:16,grupo:'D'},{aula:17,grupo:'C'},{aula:18,grupo:'B'},{aula:21,grupo:'A'}],
+  22: [{aula:17,grupo:'D'},{aula:18,grupo:'C'},{aula:19,grupo:'B'},{aula:22,grupo:'A'}],
+  23: [{aula:18,grupo:'D'},{aula:19,grupo:'C'},{aula:20,grupo:'B'},{aula:23,grupo:'A'}],
+  24: [{aula:19,grupo:'D'},{aula:20,grupo:'C'},{aula:21,grupo:'B'},{aula:24,grupo:'A'}],
+  25: [{aula:20,grupo:'D'},{aula:21,grupo:'C'},{aula:22,grupo:'B'},{aula:25,grupo:'A'}],
+  26: [{aula:21,grupo:'D'},{aula:22,grupo:'C'},{aula:23,grupo:'B'},{aula:26,grupo:'A'}],
+  27: [{aula:22,grupo:'D'},{aula:23,grupo:'C'},{aula:24,grupo:'B'},{aula:27,grupo:'A'}],
+  28: [{aula:23,grupo:'D'},{aula:24,grupo:'C'},{aula:25,grupo:'B'},{aula:28,grupo:'A'}],
+  29: [{aula:24,grupo:'D'},{aula:25,grupo:'C'},{aula:26,grupo:'B'},{aula:29,grupo:'A'}],
+  30: [{aula:25,grupo:'D'},{aula:26,grupo:'C'},{aula:27,grupo:'B'},{aula:30,grupo:'A'}],
+};
+
+// ─── Drag and drop ────────────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+
+function handleFiles(newFiles) {
+  for (const f of newFiles) {
+    if (f.type === 'application/pdf' && !files.find(x => x.name === f.name)) files.push(f);
+  }
+  files.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+  renderFileList();
+}
+
+function renderFileList() {
+  const list = document.getElementById('fileList');
+  const actions = document.getElementById('fileActions');
+  const count = document.getElementById('fileCount');
+  list.innerHTML = '';
+  if (!files.length) { actions.classList.add('hidden'); return; }
+  actions.classList.remove('hidden');
+  count.textContent = `${files.length} PDF${files.length > 1 ? 's' : ''} selecionado${files.length > 1 ? 's' : ''}`;
+  files.forEach((f, i) => {
+    const size = f.size > 1048576 ? `${(f.size/1048576).toFixed(1)} MB` : `${(f.size/1024).toFixed(0)} KB`;
+    list.innerHTML += `<div class="file-item">
+      <span class="file-num">A${i+1}</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${size}</span>
+      <button class="file-remove" onclick="removeFile(${i})">×</button>
+    </div>`;
+  });
+}
+
+function removeFile(i) { files.splice(i, 1); renderFileList(); }
+function clearFiles() { files = []; renderFileList(); }
+function toggleKey() {
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ─── Logging ──────────────────────────────────────────────────────────────────
+function log(msg, type = '') {
+  const box = document.getElementById('logBox');
+  box.classList.add('active');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' ' + type : '');
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(pct, status, step = '') {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressStatus').textContent = status;
+  document.getElementById('progressStep').textContent = step;
+}
+
+// ─── PDF to base64 ────────────────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── Rate limit helper (6s between calls to stay under 10 RPM) ───────────────
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── Gemini API call ──────────────────────────────────────────────────────────
+async function callGemini(apiKey, parts, maxRetries = 3) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
+      })
+    });
+
+    if (res.status === 429) {
+      const wait = attempt * 15000;
+      log(`Limite de requisições atingido. Aguardando ${wait/1000}s...`, 'warn');
+      await delay(wait);
+      continue;
+    }
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `Erro API ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+  throw new Error('Número máximo de tentativas atingido.');
+}
+
+// ─── Safe JSON cleaner ────────────────────────────────────────────────────────
+function safeParseJSON(raw) {
+  // Remove markdown code fences
+  let s = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+
+  // Find outermost { }
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('Nenhum JSON encontrado na resposta.');
+  s = s.slice(start, end + 1);
+
+  // Try direct parse first
+  try { return JSON.parse(s); } catch(_) {}
+
+  // Fix common issues: unescaped quotes inside strings, trailing commas
+  // Remove trailing commas before } or ]
+  s = s.replace(/,\s*([}\]])/g, '$1');
+
+  // Try again
+  try { return JSON.parse(s); } catch(_) {}
+
+  // Last resort: extract questoes array manually if JSON is truncated
+  const temas = [];
+  const temasMatch = s.match(/"temas"\s*:\s*\[(.*?)\]/s);
+  if (temasMatch) {
+    try {
+      JSON.parse('[' + temasMatch[1] + ']').forEach(t => temas.push(t));
+    } catch(_) {}
+  }
+
+  const questoes = [];
+  const questaoRegex = /\{[^{}]*"num"\s*:\s*(\d+)[^{}]*"grupo"\s*:\s*"([ABCD])"[^{}]*\}/gs;
+  let m;
+  while ((m = questaoRegex.exec(s)) !== null) {
+    try {
+      const q = JSON.parse(m[0].replace(/,\s*([}\]])/g, '$1'));
+      questoes.push(q);
+    } catch(_) {}
+  }
+
+  if (questoes.length > 0) {
+    return { aula: 0, total: questoes.length, temas, questoes };
+  }
+
+  throw new Error('Não foi possível interpretar o JSON retornado pelo Gemini.');
+}
+
+// ─── Extract questions from one PDF ──────────────────────────────────────────
+async function extractQuestions(apiKey, file, lessonNum, subject) {
+  log(`Processando Aula ${lessonNum}: ${file.name}...`, 'warn');
+  const b64 = await fileToBase64(file);
+
+  const prompt = `Você é um assistente de estudos para concurso do TCU. Analise este PDF da Aula ${lessonNum} de ${subject}.
+
+TAREFA: Extraia TODAS as questões, deduplique e retorne JSON válido e completo.
+
+REGRAS IMPORTANTES:
+1. Questões aparecem ao longo do texto, em blocos de comentários e em listas de exercícios finais
+2. Se a mesma questão aparecer mais de uma vez, mantenha APENAS a versão com comentário mais completo. Descarte duplicatas silenciosamente.
+3. Após deduplicação, numere sequencialmente de 1 em diante
+4. Atribua grupos pela posição sequencial:
+   - Grupo A: posições 1,5,9,13,17,21,25,29...
+   - Grupo B: posições 2,6,10,14,18,22,26,30...
+   - Grupo C: posições 3,7,11,15,19,23,27,31...
+   - Grupo D: posições 4,8,12,16,20,24,28,32...
+5. Identifique os 5-10 principais temas abordados na aula
+
+REGRAS DE FORMATAÇÃO DO JSON (CRÍTICO):
+- Retorne APENAS JSON puro, sem markdown, sem texto antes ou depois
+- Todos os textos dentro do JSON devem ter aspas e caracteres especiais escapados corretamente
+- Substitua aspas duplas dentro de textos por aspas simples
+- Mantenha os comentários curtos (máximo 3 linhas) para evitar truncamento
+- NÃO use quebras de linha dentro dos valores de string — use \\n se necessário
+
+ESTRUTURA OBRIGATÓRIA:
+{"aula":${lessonNum},"total":0,"temas":["tema1","tema2"],"questoes":[{"num":1,"grupo":"A","banca":"CESPE","tipo":"certo_errado","enunciado":"texto","alternativas":[],"gabarito":"Certo","comentario":"explicação resumida"}]}`;
+
+  const parts = [
+    { inline_data: { mime_type: 'application/pdf', data: b64 } },
+    { text: prompt }
+  ];
+
+  let data;
+  let lastError;
+
+  // Try up to 2 times
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const raw = await callGemini(apiKey, parts, 16000);
+      data = safeParseJSON(raw);
+      break;
+    } catch(err) {
+      lastError = err;
+      log(`Aula ${lessonNum} — tentativa ${attempt} falhou: ${err.message}`, 'warn');
+      if (attempt < 2) await delay(5000);
+    }
+  }
+
+  if (!data) throw new Error(lastError?.message || 'Falha ao processar JSON');
+
+  // Ensure aula number is correct
+  data.aula = lessonNum;
+  if (!data.questoes) data.questoes = [];
+  if (!data.temas) data.temas = [];
+  data.total = data.questoes.length;
+
+  log(`Aula ${lessonNum}: ${data.total} questões únicas extraídas`, 'ok');
+  log(`  A:[${data.questoes.filter(q=>q.grupo==='A').map(q=>q.num).join(',')||'—'}] B:[${data.questoes.filter(q=>q.grupo==='B').map(q=>q.num).join(',')||'—'}] C:[${data.questoes.filter(q=>q.grupo==='C').map(q=>q.num).join(',')||'—'}] D:[${data.questoes.filter(q=>q.grupo==='D').map(q=>q.num).join(',')||'—'}]`);
+  return data;
+}
+
+// ─── Generate booklet HTML ────────────────────────────────────────────────────
+function generateBookletHTML(lessonNum, subject, banco) {
+  const sections = SPACED_TABLE[lessonNum];
+  if (!sections) return null;
+
+  let html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Caderno Consolidado — Aula ${lessonNum} — ${subject}</title>
+<style>
+body{font-family:Georgia,serif;max-width:820px;margin:40px auto;padding:0 28px 60px;color:#1a1a1a;line-height:1.75;font-size:15px}
+h1{font-size:22px;border-bottom:2.5px solid #1a1a1a;padding-bottom:14px;margin-bottom:6px;font-family:Georgia,serif}
+.subtitle{color:#777;font-size:13px;margin-bottom:44px;font-family:sans-serif}
+h2{font-size:15px;font-weight:600;color:#333;border-left:4px solid #c8a96e;padding-left:12px;margin:40px 0 18px;font-family:sans-serif;letter-spacing:0.3px}
+.questao{border:1px solid #e2dfd8;border-radius:8px;padding:22px 26px;margin-bottom:18px;background:#fafaf7;page-break-inside:avoid}
+.questao-header{font-size:11px;color:#999;margin-bottom:10px;font-family:sans-serif;letter-spacing:0.3px}
+.questao-header strong{color:#666;font-weight:600}
+.enunciado{margin-bottom:14px;color:#222}
+.alternativas{list-style:none;padding:0;margin:0 0 14px}
+.alternativas li{padding:4px 0;font-size:14px;color:#333}
+.comentario{background:#f2efe8;border-radius:6px;padding:14px 16px;font-size:14px;color:#444;margin-top:12px;border-left:3px solid #c8a96e}
+.comentario-label{font-size:11px;font-weight:600;color:#999;font-family:sans-serif;letter-spacing:0.5px;margin-bottom:6px;display:block}
+.gabarito{text-align:right;font-size:10px;color:#bbb;margin-top:10px;font-family:sans-serif}
+.resumao{background:#1c1c1a;color:#e8e4dc;border-radius:10px;padding:26px 28px;margin-top:52px}
+.resumao-title{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#c8a96e;margin-bottom:18px;font-family:sans-serif;font-weight:600}
+.resumao dl{}
+.resumao dt{font-weight:600;color:#c8a96e;margin-top:14px;font-size:14px}
+.resumao dd{margin:4px 0 0 0;color:#b8b4ac;font-size:13.5px;line-height:1.6}
+@media print{body{margin:20px;padding:0 16px}.questao{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style></head><body>
+<h1>Caderno Consolidado — Aula ${lessonNum}</h1>
+<div class="subtitle">${subject} &nbsp;·&nbsp; Revisão Espaçada &nbsp;·&nbsp; Grupos ${sections.map(s=>s.grupo).join(' / ')}</div>`;
+
+  for (const sec of sections) {
+    const aulaData = banco[sec.aula];
+    if (!aulaData) continue;
+    const questoes = (aulaData.questoes || []).filter(q => q.grupo === sec.grupo);
+    const label = sec.grupo === 'A' ? 'Questões Novas' : 'Revisão';
+
+    html += `<h2>GRUPO ${sec.grupo} — AULA ${sec.aula} — ${label}</h2>`;
+
+    if (!questoes.length) {
+      html += `<p style="color:#bbb;font-size:13px;font-style:italic;padding-left:4px;">Nenhuma questão neste grupo.</p>`;
+      continue;
+    }
+
+    for (const q of questoes) {
+      const tipo = q.tipo === 'certo_errado' ? 'Certo ou Errado' : 'Múltipla Escolha';
+      html += `<div class="questao">
+  <div class="questao-header"><strong>Questão ${q.num}</strong> &nbsp;·&nbsp; ${q.banca || 'Fonte não identificada'} &nbsp;·&nbsp; ${tipo}</div>
+  <div class="enunciado">${q.enunciado || ''}</div>`;
+
+      if (q.alternativas?.length) {
+        html += `<ul class="alternativas">`;
+        q.alternativas.forEach(alt => { html += `<li>( ) &nbsp;${alt}</li>`; });
+        html += `</ul>`;
+      }
+
+      html += `<div class="comentario">
+    <span class="comentario-label">Comentário</span>
+    ${q.comentario || '<em style="color:#aaa">Comentário não disponível para esta questão.</em>'}
+  </div>
+  <div class="gabarito">Gabarito: ${q.gabarito || '—'}</div>
+</div>`;
+    }
+  }
+
+  // Resumão da aula nova (last section = Grupo A = new lesson)
+  const newLesson = sections[sections.length - 1].aula;
+  const newData = banco[newLesson];
+  if (newData?.temas?.length) {
+    html += `<div class="resumao">
+  <div class="resumao-title">Resumão de Consulta Rápida — Aula ${newLesson}</div>
+  <dl>`;
+    newData.temas.forEach(t => {
+      html += `<dt>${t}</dt><dd>Tema abordado na Aula ${newLesson}.</dd>`;
+    });
+    html += `</dl></div>`;
+  }
+
+  html += `</body></html>`;
+  return html;
+}
+
+// ─── Perplexity topic list ────────────────────────────────────────────────────
+function generatePerplexityText(subject, banco) {
+  let lines = '';
+  for (const [n, data] of Object.entries(banco).sort((a,b)=>+a[0]-+b[0])) {
+    if (data.temas?.length) lines += `\nAula ${n}: ${data.temas.join(', ')}`;
+  }
+  return `LISTA DE TEMAS PARA O PERPLEXITY — ${subject}
+Cole esta mensagem no Perplexity Pro (modo Research ou Pro Search):
+
+---
+Estou estudando para o concurso do TCU (CESPE/CEBRASPE) na matéria de ${subject}. Concluí ${Object.keys(banco).length} aulas e os seguintes temas foram abordados:
+${lines}
+
+Para cada tema, informe: (1) frequência de cobrança nas provas do TCU nos últimos 5 anos (Alta / Média / Baixa), (2) subtópicos mais recorrentes, (3) tipo de questão mais comum (Certo/Errado ou Múltipla Escolha). Ao final, liste os 10 temas de maior incidência em ordem decrescente.
+---`;
+}
+
+// ─── Main generation flow ─────────────────────────────────────────────────────
+async function startGeneration() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const subject = document.getElementById('subject').value.trim();
+
+  if (!apiKey) { alert('Por favor, insira sua chave de API do Gemini.'); return; }
+  if (!subject) { alert('Por favor, informe o nome da matéria.'); return; }
+  if (!files.length) { alert('Por favor, adicione pelo menos um PDF.'); return; }
+
+  stopFlag = false;
+  cadernos = {};
+  perplexityText = '';
+
+  document.getElementById('btnGenerate').disabled = true;
+  document.getElementById('btnStop').classList.remove('hidden');
+  document.getElementById('progressWrap').classList.add('active');
+  document.getElementById('resultsCard').classList.add('hidden');
+  document.getElementById('logBox').innerHTML = '';
+
+  const banco = {};
+  const total = files.length;
+
+  try {
+    // Phase 1: Extract questions
+    for (let i = 0; i < files.length; i++) {
+      if (stopFlag) { log('Processamento interrompido.', 'warn'); break; }
+
+      const lessonNum = i + 1;
+      setProgress(Math.round((i / total) * 60), `Extraindo questões — Aula ${lessonNum} de ${total}`, files[i].name);
+
+      try {
+        banco[lessonNum] = await extractQuestions(apiKey, files[i], lessonNum, subject);
+      } catch (err) {
+        log(`Erro na Aula ${lessonNum}: ${err.message}`, 'err');
+      }
+
+      // Respect free tier rate limit: 6s between requests
+      if (i < files.length - 1) await delay(6500);
+    }
+
+    if (stopFlag) return;
+
+    // Phase 2: Generate booklets
+    log('Gerando cadernos consolidados...', 'warn');
+    const results = [];
+    const maxLesson = Math.max(...Object.keys(banco).map(Number));
+
+    for (let n = 1; n <= maxLesson; n++) {
+      if (stopFlag) break;
+      setProgress(60 + Math.round((n / maxLesson) * 35), `Gerando caderno — Aula ${n}`, '');
+
+      const html = generateBookletHTML(n, subject, banco);
+      if (html) {
+        const safeName = subject.replace(/[^a-zA-Z0-9]/g, '_');
+        cadernos[n] = { html, name: `Caderno_Aula_${String(n).padStart(2,'0')}_${safeName}.html` };
+        const questCount = (SPACED_TABLE[n] || []).reduce((acc, sec) =>
+          acc + ((banco[sec.aula]?.questoes || []).filter(q => q.grupo === sec.grupo).length), 0);
+        results.push({ n, questCount });
+        log(`Caderno Aula ${n} gerado — ${questCount} questões`, 'ok');
+      }
+    }
+
+    // Phase 3: Perplexity list
+    perplexityText = generatePerplexityText(subject, banco);
+    log('Lista de temas para o Perplexity gerada!', 'ok');
+
+    setProgress(100, `Concluído! ${Object.keys(cadernos).length} cadernos gerados.`, '');
+    renderResults(results, subject);
+
+  } catch (err) {
+    log(`Erro: ${err.message}`, 'err');
+    setProgress(0, 'Erro. Veja o log abaixo.', '');
+  } finally {
+    document.getElementById('btnGenerate').disabled = false;
+    document.getElementById('btnStop').classList.add('hidden');
+  }
+}
+
+function stopGeneration() { stopFlag = true; }
+
+// ─── Render results ───────────────────────────────────────────────────────────
+function renderResults(results, subject) {
+  const card = document.getElementById('resultsCard');
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+  card.classList.remove('hidden');
+
+  for (const r of results) {
+    const grupos = (SPACED_TABLE[r.n] || []).map(s => `${s.grupo}·A${s.aula}`).join(' + ');
+    grid.innerHTML += `<div class="result-item">
+      <span class="result-badge">Aula ${r.n}</span>
+      <div>
+        <div class="result-name">Caderno Consolidado — Aula ${r.n}</div>
+        <div class="result-meta">${grupos} &nbsp;·&nbsp; ${r.questCount} questões</div>
+      </div>
+      <button class="btn-download" onclick="downloadOne(${r.n})">⬇ Baixar</button>
+    </div>`;
+  }
+}
+
+// ─── Downloads ────────────────────────────────────────────────────────────────
+function downloadOne(n) {
+  const c = cadernos[n];
+  if (!c) return;
+  const blob = new Blob([c.html], {type: 'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = c.name;
+  a.click();
+}
+
+function downloadAll() {
+  Object.keys(cadernos).forEach((n, i) => setTimeout(() => downloadOne(+n), i * 400));
+}
+
+function downloadPerplexity() {
+  if (!perplexityText) return;
+  const blob = new Blob([perplexityText], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'temas_perplexity.txt';
+  a.click();
+}
+</script>
+</body>
+</html>
