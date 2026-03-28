@@ -482,6 +482,21 @@ function toggleKey() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
+// Save and load API key from localStorage
+function saveApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (key) localStorage.setItem('gemini_api_key', key);
+}
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('gemini_api_key');
+  if (saved) document.getElementById('apiKey').value = saved;
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apiKey').addEventListener('input', saveApiKey);
+});
+
 // ─── Logging ──────────────────────────────────────────────────────────────────
 function log(msg, type = '') {
   const box = document.getElementById('logBox');
